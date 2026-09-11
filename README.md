@@ -122,6 +122,8 @@ Agent 编排模块，负责把模型、RAG、Memory 和业务工具组合成完�
 
 ## 项目路线
 
+详细任务清单见：[Spring AI Agent 实战学习路线](docs/learning-roadmap.md)。
+
 ### 第 1 阶段：LLM 最小闭环
 
 目标：先把大模型调用链路跑通。
