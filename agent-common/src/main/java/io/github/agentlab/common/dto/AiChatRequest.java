@@ -1,4 +1,9 @@
 package io.github.agentlab.common.dto;
 
-public record AiChatRequest(String message) {
+
+import jakarta.validation.constraints.NotBlank;
+
+public record AiChatRequest(
+        @NotBlank(message = "message must not be blank")
+        String message) {
 }

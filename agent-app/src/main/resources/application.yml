@@ -6,12 +6,15 @@ spring:
     name: spring-ai-agent-lab
   ai:
     openai:
-      api-key: ${OPENAI_API_KEY:}
+      api-key: ${API_KEY}
+      base-url: ${API_URL:https://api.deepseek.com}
       chat:
         options:
-          model: ${OPENAI_CHAT_MODEL:gpt-4o-mini}
+          model: ${CHAT_MODEL:deepseek-v4-flash}
           temperature: 0.2
 
 logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%X{traceId}] %logger{36} - %msg%n"
   level:
     io.github.agentlab: DEBUG
