@@ -1,4 +1,4 @@
-package com.xiaofeng.agentlab.businesstools.tool;
+package io.github.agentlab.businesstools.tool;
 
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;

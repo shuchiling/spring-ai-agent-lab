@@ -11,7 +11,7 @@
         <relativePath/>
     </parent>
 
-    <groupId>com.xiaofeng.agentlab</groupId>
+    <groupId>io.github.agentlab</groupId>
     <artifactId>spring-ai-agent-lab</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <packaging>pom</packaging>

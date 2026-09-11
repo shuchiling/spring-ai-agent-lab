@@ -1,6 +1,6 @@
-package com.xiaofeng.agentlab.aicore.service;
+package io.github.agentlab.aicore.service;
 
-import com.xiaofeng.agentlab.common.dto.IntentAnalysis;
+import io.github.agentlab.common.dto.IntentAnalysis;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;

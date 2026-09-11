@@ -1,4 +1,4 @@
-package com.xiaofeng.agentlab.common.dto;
+package io.github.agentlab.common.dto;
 
 public record AiChatRequest(String message) {
 }

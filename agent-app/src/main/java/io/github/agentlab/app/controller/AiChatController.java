@@ -1,9 +1,9 @@
-package com.xiaofeng.agentlab.app.controller;
+package io.github.agentlab.app.controller;
 
-import com.xiaofeng.agentlab.aicore.service.SimpleChatService;
-import com.xiaofeng.agentlab.common.dto.AiChatRequest;
-import com.xiaofeng.agentlab.common.dto.AiChatResponse;
-import com.xiaofeng.agentlab.common.dto.IntentAnalysis;
+import io.github.agentlab.aicore.service.SimpleChatService;
+import io.github.agentlab.common.dto.AiChatRequest;
+import io.github.agentlab.common.dto.AiChatResponse;
+import io.github.agentlab.common.dto.IntentAnalysis;
 import java.util.UUID;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;

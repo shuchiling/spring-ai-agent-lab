@@ -1,9 +1,9 @@
-package com.xiaofeng.agentlab.app;
+package io.github.agentlab.app;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-@SpringBootApplication(scanBasePackages = "com.xiaofeng.agentlab")
+@SpringBootApplication(scanBasePackages = "io.github.agentlab")
 public class AgentLabApplication {
 
     public static void main(String[] args) {

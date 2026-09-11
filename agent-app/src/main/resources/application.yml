@@ -14,4 +14,4 @@ spring:
 
 logging:
   level:
-    com.xiaofeng.agentlab: DEBUG
+    io.github.agentlab: DEBUG
