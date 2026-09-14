@@ -130,6 +130,7 @@ public class BusinessAgentService {
                     .user(userMessage)
                     .call()
                     .entity(ToolRouteDecision.class);
+            assert routeDecision != null;
             log.info("模型调用成功: 类型=工具路由, traceId={}, 用户输入={}, routeType={}, hasOrderNo={}, orderNo={}, reason={}, 耗时={}ms",
                     traceId, userMessage, routeDecision.routeType(), routeDecision.hasOrderNo(), routeDecision.orderNo(),
                     routeDecision.reason(), System.currentTimeMillis() - startTime);
@@ -193,7 +194,7 @@ public class BusinessAgentService {
         ToolRouteEvalResponse response = new ToolRouteEvalResponse(
                 samples.size(),
                 passed,
-                samples.isEmpty() ? 0 : (double) passed / samples.size(),
+                (double) passed / samples.size(),
                 items
         );
         log.info("工具路由评测完成: traceId={}, 总数={}, 通过数={}, 准确率={}, 耗时={}ms",
