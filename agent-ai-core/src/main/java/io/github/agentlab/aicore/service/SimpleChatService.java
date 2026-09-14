@@ -31,11 +31,11 @@ public class SimpleChatService {
                     .user(userMessage)
                     .call()
                     .content();
-            log.info("model call success, type=chat, traceId={}, message={}, cost={}ms",
+            log.info("模型调用成功: 类型=普通对话, traceId={}, 用户输入={}, 耗时={}ms",
                     traceId, userMessage, System.currentTimeMillis() - startTime);
             return content;
         } catch (RuntimeException e) {
-            log.error("model call failed, type=chat, traceId={}, message={}, cost={}ms",
+            log.error("模型调用异常: 类型=普通对话, traceId={}, 用户输入={}, 耗时={}ms",
                     traceId, userMessage, System.currentTimeMillis() - startTime, e);
             throw e;
         }
@@ -56,11 +56,11 @@ public class SimpleChatService {
                     .user(userMessage)
                     .call()
                     .entity(IntentAnalysis.class);
-            log.info("model call success, type=intent, traceId={}, message={}, cost={}ms",
-                    traceId, userMessage, System.currentTimeMillis() - startTime);
+            log.info("模型调用成功: 类型=意图识别, traceId={}, 用户输入={}, 识别结果={}, 耗时={}ms",
+                    traceId, userMessage, intentAnalysis, System.currentTimeMillis() - startTime);
             return intentAnalysis;
         } catch (RuntimeException e) {
-            log.error("model call failed, type=intent, traceId={}, message={}, cost={}ms",
+            log.error("模型调用异常: 类型=意图识别, traceId={}, 用户输入={}, 耗时={}ms",
                     traceId, userMessage, System.currentTimeMillis() - startTime, e);
             throw e;
         }

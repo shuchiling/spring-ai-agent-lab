@@ -19,15 +19,17 @@ public class ControllerAspect {
         String methodName = point.getSignature().getName();
         long startTime = System.currentTimeMillis();
         String traceId = TraceContext.getTraceId();
-        log.info("api request start, controller={}, method={}, traceId={}", serviceOrClassName, methodName, traceId);
         Object[] args = point.getArgs();
+        log.info("接口请求开始: 控制器={}, 方法={}, traceId={}, 请求参数={}",
+                serviceOrClassName, methodName, traceId, JSON.toJSONString(args));
         try {
             Object response = point.proceed(args);
-            log.info("api request success, controller={}, method={}, traceId={}, request={}, cost={}ms",
-                    serviceOrClassName, methodName, traceId, JSON.toJSONString(args), System.currentTimeMillis() - startTime);
+            log.info("接口请求成功: 控制器={}, 方法={}, traceId={}, 请求参数={}, 响应类型={}, 耗时={}ms",
+                    serviceOrClassName, methodName, traceId, JSON.toJSONString(args),
+                    response == null ? "null" : response.getClass().getSimpleName(), System.currentTimeMillis() - startTime);
             return response;
         } catch (Throwable e) {
-            log.error("api request failed, controller={}, method={}, traceId={}, request={}, cost={}ms",
+            log.error("接口请求异常: 控制器={}, 方法={}, traceId={}, 请求参数={}, 耗时={}ms",
                     serviceOrClassName, methodName, traceId, JSON.toJSONString(args), System.currentTimeMillis() - startTime, e);
             throw e;
         }
