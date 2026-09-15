@@ -12,6 +12,31 @@ spring:
         options:
           model: ${CHAT_MODEL:deepseek-v4-flash}
           temperature: 0.2
+  # PostgreSQL：工单/审计落库。pgvector 扩展任务 07 再启用。
+  # 默认值与 infra/.env.example 对齐，本地开发可直接 docker compose up 后启动应用。
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/agent_lab}
+    username: agent
+    password: 123456
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      # 开发期由 Hibernate 同步表结构；schema.sql 作为字段/约束的权威说明。
+      # 生产应改 validate + Flyway/Liquibase。
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: false
+    open-in-view: false
+  sql:
+    init:
+      mode: never
+  # Redis：工单草稿临时存储 + 幂等 key + 分布式锁（Redisson）
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: 123456
 
 logging:
   pattern:

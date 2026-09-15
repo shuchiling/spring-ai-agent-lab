@@ -3,6 +3,7 @@ package io.github.agentlab.app.handler;
 import io.github.agentlab.common.dto.ApiResponse;
 import io.github.agentlab.common.enums.ErrorCode;
 import io.github.agentlab.common.context.TraceContext;
+import io.github.agentlab.common.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -11,6 +12,13 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(BusinessException.class)
+    public ApiResponse<Void> exceptionHandler(BusinessException e) {
+        log.warn("业务异常: traceId={}, 错误码={}, 错误信息={}",
+                TraceContext.getTraceId(), e.getErrorCode().getCode(), e.getMessage());
+        return ApiResponse.fail(e.getErrorCode().getCode(), e.getMessage());
+    }
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ApiResponse<Void> exceptionHandler(IllegalArgumentException e) {
