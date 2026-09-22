@@ -1,6 +1,8 @@
 package io.github.agentlab.businesstools.tool;
 
+import com.alibaba.fastjson.JSON;
 import io.github.agentlab.businesstools.service.TicketService;
+import io.github.agentlab.businesstools.util.OrderUtil;
 import io.github.agentlab.common.context.TraceContext;
 import io.github.agentlab.common.dto.TicketDraft;
 import io.github.agentlab.common.enums.ErrorCode;
@@ -58,13 +60,61 @@ public class TicketCreateTool {
             @ToolParam(description = "优先级：LOW / NORMAL / HIGH / URGENT")
             TicketPriority priority) {
 
-        // TODO 任务04（核心/编排）：实现校验 → 调 TicketService.createDraft → 组装 ToolResult
-        //  参照 OrderTool 的日志和错误处理风格。
-        throw new UnsupportedOperationException("TODO 任务04: createTicketDraft 由你实现");
+        long start = System.currentTimeMillis();
+        String traceId = TraceContext.getTraceId();
+        String toolName = "createTicketDraft";
+        logStart(toolName, traceId, orderNo);
+        //前置校验
+        ToolResult toolResult = preHandle(toolName, traceId, start, orderNo, reason, priority);
+        if (toolResult != null) {
+            return toolResult;
+        }
+        TicketDraft draft = ticketService.createDraft(orderNo, reason, priority);
+        ToolResult result = StringUtils.isBlank(draft.draftId()) ? ToolResult.fail(orderNo, ErrorCode.INTERNAL_ERROR, "草稿生成失败") : ToolResult.ok(draft);
+        logToolResult(toolName, traceId, result, start);
+        return result;
+
     }
 
     private void logStart(String tool, String traceId, String orderNo) {
         log.info("工具调用开始: 工具名称={}, traceId={}, 订单号={}", tool, traceId, orderNo);
+    }
+
+    private ToolResult preHandle(String toolName, String traceId, long start, String orderNo, String reason, TicketPriority priority) {
+        if (StringUtils.isBlank(orderNo)) {
+            ToolResult result = ToolResult.fail(null, ErrorCode.BAD_REQUEST, "订单号不能为空");
+            logToolResult(toolName, traceId, result, start);
+            return ToolResult.fail(null, ErrorCode.BAD_REQUEST, "订单号不能为空");
+        }
+        if (!OrderUtil.isValidOrderNo(orderNo)) {
+            ToolResult result = ToolResult.fail(orderNo, ErrorCode.ILLEGAL_ARGUMENT, "订单号不合法");
+            logToolResult(toolName, traceId, result, start);
+            return ToolResult.fail(null, ErrorCode.BAD_REQUEST, "订单号不合法");
+        }
+        if (StringUtils.isBlank(reason)) {
+            ToolResult result = ToolResult.fail(null, ErrorCode.BAD_REQUEST, "退款原因不能为空");
+            logToolResult(toolName, traceId, result, start);
+            return ToolResult.fail(null, ErrorCode.BAD_REQUEST, "退款原因不能为空");
+        }
+        if (priority == null) {
+            ToolResult result = ToolResult.fail(null, ErrorCode.BAD_REQUEST, "工单优先级不能为空");
+            logToolResult(toolName, traceId, result, start);
+            return result;
+        }
+        return null;
+    }
+
+
+    private void logToolResult(String toolName, String traceId, ToolResult result, long start) {
+        if (result.success()) {
+            log.info("工具调用成功: 工具名称={}, traceId={}, 订单号={}, 草稿号={}, success={}, 耗时={}ms, 返回结果={}",
+                    toolName, traceId, result.orderNo(), result.draftId, true, System.currentTimeMillis() - start,
+                    JSON.toJSONString(result));
+            return;
+        }
+        log.warn("工具调用业务失败: 工具名称={}, traceId={}, 订单号={},草稿号={}, success={}, 错误码={}, 耗时={}ms, 返回结果={}",
+                toolName, traceId, result.orderNo(), result.draftId, false, result.errorCode(), System.currentTimeMillis() - start,
+                JSON.toJSONString(result));
     }
 
     /**

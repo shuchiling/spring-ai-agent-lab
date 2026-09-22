@@ -33,18 +33,28 @@ public interface TicketDraftStore {
     Optional<TicketDraft> findByToken(String confirmToken);
 
     /**
+     * 按幂等键取尚未确认的草稿。{@link #saveIfAbsent} 返回 false 时用于取回已存在的草稿。
+     */
+    Optional<TicketDraft> findByIdempotencyKey(String idempotencyKey);
+
+    /**
      * 删除草稿。确认成功后调用，避免 token 被二次消费。
      */
     void remove(String confirmToken);
 
     /**
-     * 记录"已确认"映射：idempotencyKey → ticketId。
-     * 用于二次确认同一 token 时的幂等返回（草稿已删，但业务上要返回同一个工单）。
+     * 记录"已确认"映射：idempotencyKey → ticketId，以及 confirmToken → ticketId。
+     * 用于 HTTP 重试时草稿已删、但仍需返回同一工单的幂等语义。
      */
-    void markConfirmed(String idempotencyKey, String ticketId);
+    void markConfirmed(String idempotencyKey, String confirmToken, String ticketId);
 
     /**
      * 查询某个 idempotencyKey 是否已经确认过。
      */
     Optional<String> findConfirmedTicketId(String idempotencyKey);
+
+    /**
+     * 按 confirmToken 查询已落库的 ticketId（确认成功后的幂等重试用）。
+     */
+    Optional<String> findTicketIdByConfirmToken(String confirmToken);
 }

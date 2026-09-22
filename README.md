@@ -283,8 +283,10 @@ Content-Type: application/json
 - [x] 提供基础 ChatClient 调用
 - [x] 提供结构化意图识别接口
 - [x] 创建业务工具模块雏形
-- [ ] 实现 Tool Calling 闭环
+- [x] 实现 Tool Calling 闭环（订单 / 物流 / 售后查询 + 工单草稿）
+- [x] 实现业务 Agent 基础（`/api/agent/business-chat`、工具路由评测）
+- [x] 实现工单人审确认（草稿 Redis、confirm 落库、幂等与审计）
 - [ ] 实现 RAG 文档问答
 - [ ] 实现 Memory 会话记忆
-- [ ] 实现业务 Agent 编排
-- [ ] 补充评测、日志、审计和安全能力
+- [ ] 实现 Agent Orchestrator 状态机编排
+- [ ] 补充全链路评测、Token 统计和安全能力

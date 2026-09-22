@@ -392,10 +392,10 @@ Content-Type: application/json
 - [x] 提供基础 ChatClient 调用
 - [x] 提供结构化意图识别接口
 - [x] 创建业务工具模块雏形
-- [ ] 任务 01：LLM 最小闭环 + 结构化输出
-- [ ] 任务 02：Tool Calling 基础
-- [ ] 任务 03：业务 Agent 基础
-- [ ] 任务 04：工单创建工具
+- [x] 任务 01：LLM 最小闭环 + 结构化输出
+- [x] 任务 02：Tool Calling 基础
+- [x] 任务 03：业务 Agent 基础（`businessChat` 多工具 + `tool-route` 评测）
+- [x] 任务 04：工单创建工具（草稿 / confirm / 幂等 / 审计 / Agent 挂载工单草稿工具）
 - [ ] 任务 05：Memory 基础
 - [ ] 任务 06：Memory 进阶
 - [ ] 任务 07：RAG 基础

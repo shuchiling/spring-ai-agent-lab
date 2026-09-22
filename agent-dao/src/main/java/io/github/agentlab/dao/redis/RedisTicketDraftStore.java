@@ -42,6 +42,7 @@ public class RedisTicketDraftStore implements TicketDraftStore {
     private static final String KEY_DRAFT = "ticket:draft:";
     private static final String KEY_DRAFT_TOKEN = "ticket:draft:token:";
     private static final String KEY_CONFIRMED = "ticket:confirmed:";
+    private static final String KEY_CONFIRMED_TOKEN = "ticket:confirmed:token:";
 
     private final StringRedisTemplate redis;
 
@@ -70,6 +71,12 @@ public class RedisTicketDraftStore implements TicketDraftStore {
     }
 
     @Override
+    public Optional<TicketDraft> findByIdempotencyKey(String idempotencyKey) {
+        String json = redis.opsForValue().get(KEY_DRAFT + idempotencyKey);
+        return json == null ? Optional.empty() : Optional.of(fromJson(json));
+    }
+
+    @Override
     public void remove(String confirmToken) {
         String idempotencyKey = redis.opsForValue().get(KEY_DRAFT_TOKEN + confirmToken);
         if (idempotencyKey != null) {
@@ -79,13 +86,19 @@ public class RedisTicketDraftStore implements TicketDraftStore {
     }
 
     @Override
-    public void markConfirmed(String idempotencyKey, String ticketId) {
+    public void markConfirmed(String idempotencyKey, String confirmToken, String ticketId) {
         redis.opsForValue().set(KEY_CONFIRMED + idempotencyKey, ticketId, CONFIRMED_TTL);
+        redis.opsForValue().set(KEY_CONFIRMED_TOKEN + confirmToken, ticketId, CONFIRMED_TTL);
     }
 
     @Override
     public Optional<String> findConfirmedTicketId(String idempotencyKey) {
         return Optional.ofNullable(redis.opsForValue().get(KEY_CONFIRMED + idempotencyKey));
+    }
+
+    @Override
+    public Optional<String> findTicketIdByConfirmToken(String confirmToken) {
+        return Optional.ofNullable(redis.opsForValue().get(KEY_CONFIRMED_TOKEN + confirmToken));
     }
 
     // 以下是序列化辅助，可按需调用

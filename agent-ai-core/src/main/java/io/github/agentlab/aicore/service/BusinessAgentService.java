@@ -3,6 +3,7 @@ package io.github.agentlab.aicore.service;
 import io.github.agentlab.businesstools.tool.AfterSalesTool;
 import io.github.agentlab.businesstools.tool.LogisticsTool;
 import io.github.agentlab.businesstools.tool.OrderTool;
+import io.github.agentlab.businesstools.tool.TicketCreateTool;
 import io.github.agentlab.common.context.TraceContext;
 import io.github.agentlab.common.dto.ToolRouteDecision;
 import io.github.agentlab.common.enums.ToolRouteType;
@@ -22,7 +23,7 @@ import java.util.List;
  *
  * <p>当前阶段主要解决几个工程问题：</p>
  * <ul>
- *     <li>多工具选择：通过 {@link #businessChat(String)} 挂载订单、物流、售后三类工具，让模型根据用户语义选择工具。</li>
+ *     <li>多工具选择：通过 {@link #businessChat(String)} 挂载查询类工具与工单草稿工具，让模型根据用户语义选择工具。</li>
  *     <li>工具边界控制：prompt 描述使用“订单状态查询工具”等业务能力名称，而不是 Java 类名，降低模型对实现细节的依赖。</li>
  *     <li>参数缺失控制：用户没有提供有效订单号时，要求模型追问订单号，而不是调用工具或编造参数。</li>
  *     <li>结构化路由：通过 {@link #routeTool(String)} 只判断路线，不挂载 tools，避免评测阶段真的调用业务工具。</li>
@@ -41,23 +42,29 @@ public class BusinessAgentService {
     private final OrderTool orderTool;
     private final LogisticsTool logisticsTool;
     private final AfterSalesTool afterSalesTool;
+    private final TicketCreateTool ticketCreateTool;
 
-    public BusinessAgentService(ChatClient.Builder chatClientBuilder, OrderTool orderTool, LogisticsTool logisticsTool, AfterSalesTool afterSalesTool) {
+    public BusinessAgentService(ChatClient.Builder chatClientBuilder,
+                                OrderTool orderTool,
+                                LogisticsTool logisticsTool,
+                                AfterSalesTool afterSalesTool,
+                                TicketCreateTool ticketCreateTool) {
         this.chatClient = chatClientBuilder
                 .build();
         this.orderTool = orderTool;
         this.logisticsTool = logisticsTool;
         this.afterSalesTool = afterSalesTool;
+        this.ticketCreateTool = ticketCreateTool;
     }
 
     /**
      * 真实业务对话入口。
      *
-     * <p>这里会挂载真实工具：订单状态、物流、售后。模型根据 system prompt 和工具 schema
-     * 自主决定是否调用工具以及调用哪个工具。这个方法适合用户真实咨询场景。</p>
+     * <p>这里会挂载真实工具：订单状态、物流、售后查询，以及售后工单草稿创建。
+     * 模型根据 system prompt 和工具 schema 自主决定是否调用工具以及调用哪个工具。</p>
      *
-     * <p>注意：工具选择由模型决策，但边界由工程控制。prompt 中明确了缺少订单号要追问、
-     * 非订单客服范围要拒答、工具返回 success=false 时不能编造。</p>
+     * <p>注意：工具选择由模型决策，但边界由工程控制。写操作只能生成草稿和 confirmToken，
+     * 真正落库由用户调用 {@code /api/agent/ticket/confirm}，模型不得声称已创建工单。</p>
      */
     public String businessChat(String message) {
         String userMessage = normalizeMessage(message);
@@ -70,6 +77,10 @@ public class BusinessAgentService {
                             用户问订单状态、是否发货、是否签收时，调用订单状态查询工具。
                             用户问快递、物流、包裹到哪里了、配送进度时，调用物流查询工具。
                             用户问退款、退货、售后、售后进度时，调用售后退款查询工具。
+                            用户明确要求创建售后工单、退货退款单，且已提供订单号、退款原因和优先级时，
+                            调用创建售后工单草稿工具；该工具只生成草稿和 confirmToken，不会真正创建工单。
+                            生成草稿后，明确告知用户需使用 confirmToken 走确认接口后才能落库，不要声称工单已创建。
+                            缺少订单号、退款原因或优先级时，先追问，不要调用创建工单草稿工具。
                             缺少订单号时，追问订单号
                             问题不属于订单客服范围时，说明只能处理订单、物流、售后相关问题
                             不要编造工具返回之外的信息
@@ -78,7 +89,7 @@ public class BusinessAgentService {
                             参数缺失时，追问订单号
                             """)
                     .user(userMessage)
-                    .tools(orderTool, logisticsTool, afterSalesTool)
+                    .tools(orderTool, logisticsTool, afterSalesTool, ticketCreateTool)
                     .call()
                     .content();
             log.info("模型调用成功: 类型=订单客服, traceId={}, 用户输入={}, 耗时={}ms",
