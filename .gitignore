@@ -5,3 +5,6 @@ target/
 .env
 *.log
 
+.codex
+.claude
+.cursor

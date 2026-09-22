@@ -7,6 +7,7 @@ import io.github.agentlab.common.context.TraceContext;
 import io.github.agentlab.common.dto.TicketDraft;
 import io.github.agentlab.common.enums.ErrorCode;
 import io.github.agentlab.common.enums.TicketPriority;
+import io.github.agentlab.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -64,16 +65,42 @@ public class TicketCreateTool {
         String traceId = TraceContext.getTraceId();
         String toolName = "createTicketDraft";
         logStart(toolName, traceId, orderNo);
-        //前置校验
-        ToolResult toolResult = preHandle(toolName, traceId, start, orderNo, reason, priority);
-        if (toolResult != null) {
-            return toolResult;
+        
+        // ===== 前置校验：格式与必填项 =====
+        ToolResult validationResult = preHandle(toolName, traceId, start, orderNo, reason, priority);
+        if (validationResult != null) {
+            return validationResult;
         }
-        TicketDraft draft = ticketService.createDraft(orderNo, reason, priority);
-        ToolResult result = StringUtils.isBlank(draft.draftId()) ? ToolResult.fail(orderNo, ErrorCode.INTERNAL_ERROR, "草稿生成失败") : ToolResult.ok(draft);
-        logToolResult(toolName, traceId, result, start);
-        return result;
-
+        
+        try {
+            // ===== 调用草稿创建服务 =====
+            TicketDraft draft = ticketService.createDraft(orderNo, reason, priority);
+            ToolResult result = StringUtils.isBlank(draft.draftId()) 
+                    ? ToolResult.fail(orderNo, ErrorCode.INTERNAL_ERROR, "草稿生成失败") 
+                    : ToolResult.ok(draft);
+            logToolResult(toolName, traceId, result, start);
+            return result;
+            
+        } catch (BusinessException ex) {
+            // ===== 特殊处理：工单已创建 =====
+            // 场景：confirm 成功后，模型/用户再次调用本 Tool（同一 orderNo + reason）
+            // Service 抛 TICKET_ALREADY_CREATED，此处转换成「业务成功」的响应
+            if (ex.getErrorCode() == ErrorCode.TICKET_ALREADY_CREATED) {
+                // 从异常消息里提取 ticketId（格式："工单已创建（工单号: T-001）..."）
+                String message = ex.getMessage();
+                String ticketId = extractTicketId(message);
+                
+                ToolResult result = ToolResult.alreadyCreated(orderNo, ticketId, message);
+                log.info("工具调用-工单已存在: 工具名称={}, traceId={}, 订单号={}, 已有工单={}, 耗时={}ms",
+                        toolName, traceId, orderNo, ticketId, System.currentTimeMillis() - start);
+                return result;
+            }
+            
+            // ===== 其他业务异常：正常失败 =====
+            ToolResult result = ToolResult.fail(orderNo, ex.getErrorCode(), ex.getMessage());
+            logToolResult(toolName, traceId, result, start);
+            return result;
+        }
     }
 
     private void logStart(String tool, String traceId, String orderNo) {
@@ -118,20 +145,78 @@ public class TicketCreateTool {
     }
 
     /**
-     * 工具方法返回结构。success=false 时 errorCode/errorMessage 有值，confirmToken 为 null。
+     * 从异常消息中提取工单号。
+     * 预期格式："工单已创建（工单号: T-001）..."
      */
-    public record ToolResult(boolean success,
-                             String confirmToken,
-                             String draftId,
-                             String orderNo,
-                             String errorCode,
-                             String errorMessage) {
+    private String extractTicketId(String message) {
+        if (message == null) {
+            return null;
+        }
+        int start = message.indexOf("工单号: ");
+        if (start == -1) {
+            return null;
+        }
+        start += 5; // "工单号: ".length()
+        int end = message.indexOf("）", start);
+        if (end == -1) {
+            end = message.indexOf(",", start);
+        }
+        if (end == -1) {
+            end = message.length();
+        }
+        return message.substring(start, end).trim();
+    }
+
+    /**
+     * 工具方法返回结构。
+     *
+     * <p>三种成功状态：</p>
+     * <ul>
+     *     <li>新建草稿：success=true, confirmToken 有值, ticketId=null</li>
+     *     <li>幂等返回草稿：同上（对模型来说和新建无区别）</li>
+     *     <li>工单已存在：success=true, confirmToken=null, ticketId 有值</li>
+     * </ul>
+     *
+     * <p>失败状态：success=false, errorCode/errorMessage 有值</p>
+     */
+    public record ToolResult(
+            boolean success,
+            String confirmToken,
+            String draftId,
+            String orderNo,
+            String ticketId,        // 新增：工单已存在时返回
+            String errorCode,
+            String errorMessage
+    ) {
+        /** 新建或幂等返回草稿 */
         public static ToolResult ok(TicketDraft draft) {
-            return new ToolResult(true, draft.confirmToken(), draft.draftId(), draft.orderNo(), null, null);
+            return new ToolResult(
+                    true,
+                    draft.confirmToken(),
+                    draft.draftId(),
+                    draft.orderNo(),
+                    null,  // 草稿阶段无 ticketId
+                    null,
+                    null
+            );
         }
 
+        /** 工单已创建（confirm 后再调 Tool） */
+        public static ToolResult alreadyCreated(String orderNo, String ticketId, String message) {
+            return new ToolResult(
+                    true,
+                    null,  // 无新 confirmToken
+                    null,
+                    orderNo,
+                    ticketId,
+                    null,
+                    message  // 带工单号的提示信息
+            );
+        }
+
+        /** 业务校验失败或系统异常 */
         public static ToolResult fail(String orderNo, ErrorCode ec, String msg) {
-            return new ToolResult(false, null, null, orderNo, ec.getCode(), msg);
+            return new ToolResult(false, null, null, orderNo, null, ec.getCode(), msg);
         }
     }
 }

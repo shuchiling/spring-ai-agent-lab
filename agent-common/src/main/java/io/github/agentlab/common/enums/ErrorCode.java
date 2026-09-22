@@ -15,7 +15,8 @@ public enum ErrorCode {
     ORDER_NOT_FOUND("2003", "订单不存在"),
     ORDER_NOT_IN_AFTER_SALES("2004", "订单不在售后期内"),
     TICKET_CREATE_FAILED("2005", "工单创建失败"),
-    TICKET_CONFIRM_IN_PROGRESS("2006", "工单正在处理中，请稍后重试");
+    TICKET_CONFIRM_IN_PROGRESS("2006", "工单正在处理中，请稍后重试"),
+    TICKET_ALREADY_CREATED("2008", "工单已创建");
 
     private final String code;
     private final String message;

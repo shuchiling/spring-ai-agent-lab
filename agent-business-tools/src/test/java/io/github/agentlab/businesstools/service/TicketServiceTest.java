@@ -67,6 +67,8 @@ class TicketServiceTest {
     @Test
     void createDraft_persistsNewDraftAndWritesAudit() {
         stubLockPassthrough();
+        when(draftStore.findConfirmedTicketId(any())).thenReturn(Optional.empty());
+        when(ticketRepository.findByIdempotencyKey(any())).thenReturn(Optional.empty());
         when(draftStore.findByIdempotencyKey(any())).thenReturn(Optional.empty());
         when(draftStore.saveIfAbsent(any())).thenReturn(true);
 
@@ -75,12 +77,16 @@ class TicketServiceTest {
 
         assertThat(draft.confirmToken()).isNotBlank();
         assertThat(draft.orderNo()).isEqualTo("ORD-20260911-0001");
+        verify(draftStore).findConfirmedTicketId(any());
+        verify(ticketRepository).findByIdempotencyKey(any());
         verify(auditLogRepository).save(any());
     }
 
     @Test
     void createDraft_returnsExistingDraftWithoutAudit() {
         stubLockPassthrough();
+        when(draftStore.findConfirmedTicketId(any())).thenReturn(Optional.empty());
+        when(ticketRepository.findByIdempotencyKey(any())).thenReturn(Optional.empty());
         TicketDraft existing = sampleDraft("key-1", "token-1");
         when(draftStore.findByIdempotencyKey(any())).thenReturn(Optional.of(existing));
 
@@ -88,8 +94,54 @@ class TicketServiceTest {
                 "ORD-20260911-0001", "商品破损", TicketPriority.NORMAL);
 
         assertThat(draft).isEqualTo(existing);
+        verify(draftStore).findConfirmedTicketId(any());
+        verify(ticketRepository).findByIdempotencyKey(any());
         verify(auditLogRepository, never()).save(any());
         verify(draftStore, never()).saveIfAbsent(any());
+    }
+
+    @Test
+    void createDraft_rejectsWhenTicketAlreadyCreated_redisHit() {
+        stubLockPassthrough();
+        when(draftStore.findConfirmedTicketId(any())).thenReturn(Optional.of("T-001"));
+
+        assertThatThrownBy(() -> ticketService.createDraft(
+                "ORD-20260911-0001", "商品破损", TicketPriority.HIGH))
+                .isInstanceOf(BusinessException.class)
+                .extracting(ex -> ((BusinessException) ex).getErrorCode())
+                .isEqualTo(ErrorCode.TICKET_ALREADY_CREATED);
+
+        verify(ticketRepository, never()).findByIdempotencyKey(any());
+        verify(draftStore, never()).saveIfAbsent(any());
+        verify(auditLogRepository, never()).save(any());
+    }
+
+    @Test
+    void createDraft_rejectsWhenTicketAlreadyCreated_dbFallback() {
+        stubLockPassthrough();
+        when(draftStore.findConfirmedTicketId(any())).thenReturn(Optional.empty());
+        
+        TicketEntity existingTicket = TicketEntity.builder()
+                .ticketId("T-OLD")
+                .orderNo("ORD-20260911-0001")
+                .reason("商品破损")
+                .priority(TicketPriority.HIGH)
+                .status(TicketStatus.CREATED)
+                .idempotencyKey("test-key")
+                .createdAt(Instant.now().minus(Duration.ofDays(30)))
+                .build();
+        when(ticketRepository.findByIdempotencyKey(any())).thenReturn(Optional.of(existingTicket));
+
+        assertThatThrownBy(() -> ticketService.createDraft(
+                "ORD-20260911-0001", "商品破损", TicketPriority.HIGH))
+                .isInstanceOf(BusinessException.class)
+                .extracting(ex -> ((BusinessException) ex).getErrorCode())
+                .isEqualTo(ErrorCode.TICKET_ALREADY_CREATED);
+
+        verify(draftStore).findConfirmedTicketId(any());
+        verify(ticketRepository).findByIdempotencyKey(any());
+        verify(draftStore, never()).saveIfAbsent(any());
+        verify(auditLogRepository, never()).save(any());
     }
 
     @Test
